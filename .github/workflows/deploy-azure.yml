@@ -1,0 +1,58 @@
+name: Deploy to Azure AKS
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  ACR_NAME: myazureacr
+  AKS_RESOURCE_GROUP: myResourceGroup
+  AKS_CLUSTER_NAME: graphrag-cluster
+  IMAGE_NAME: graphrag
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Build and push image to ACR
+      run: |
+        az acr login --name ${{ env.ACR_NAME }}
+        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+    - name: Set up kubelogin for non-interactive login
+      uses: azure/use-kubelogin@v1
+      with:
+        kubelogin-version: 'v0.0.24'
+
+    - name: Get AKS credentials
+      uses: azure/aks-set-context@v3
+      with:
+        resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+        cluster-name: ${{ env.AKS_CLUSTER_NAME }}
+        admin: 'false'
+        use-kubelogin: 'true'
+
+    - name: Deploy to Azure Kubernetes Service
+      run: |
+        # Replace image placeholder
+        sed -i "s|image: .*|image: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" k8s-aks/graphrag-deployment.yaml
+        
+        # Deploy Secrets
+        echo "${{ secrets.K8S_SECRETS_AKS_YAML }}" | base64 --decode > k8s-aks/secrets.yaml
+        kubectl apply -f k8s-aks/configmap.yaml -f k8s-aks/secrets.yaml
+        
+        # Deploy StatefulSets
+        kubectl apply -f k8s-aks/opensearch-statefulset.yaml -f k8s-aks/neo4j-statefulset.yaml
+        
+        # Deploy App & Ingress
+        kubectl apply -f k8s-aks/graphrag-deployment.yaml -f k8s-aks/ingress.yaml
