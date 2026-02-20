@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: streamlit
-        image: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/graphrag:latest # Replace before applying!
+        image: 713220200108.dkr.ecr.us-east-1.amazonaws.com/graphrag:latest
         ports:
         - containerPort: 8501
         envFrom:

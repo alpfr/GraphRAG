@@ -22,6 +22,14 @@ spec:
         command: ['sysctl', '-w', 'vm.max_map_count=262144']
         securityContext:
           privileged: true
+      - name: chown-data
+        image: busybox
+        command: ['chown', '-R', '1000:1000', '/usr/share/opensearch/data']
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: opensearch-data
+          mountPath: /usr/share/opensearch/data
       containers:
       - name: opensearch
         image: opensearchproject/opensearch:2.12.0
@@ -59,7 +67,7 @@ spec:
       name: opensearch-data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "ebs-sc" # Ensure EKS has EBS CSI Driver installed
+      storageClassName: "gp3"
       resources:
         requests:
           storage: 20Gi

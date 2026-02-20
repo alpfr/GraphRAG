@@ -26,6 +26,8 @@ spec:
               key: NEO4J_PASSWORD
           # In K8s, Neo4j uses username/password combo format: neo4j/my-password
           # We'll use a wrapper script to combine user and secret
+        - name: NEO4J_server_config_strict__validation_enabled
+          value: "false"
         command:
           - "/bin/sh"
           - "-c"
@@ -50,7 +52,7 @@ spec:
       name: neo4j-data
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "ebs-sc"
+      storageClassName: "gp3"
       resources:
         requests:
           storage: 10Gi
