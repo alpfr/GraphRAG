@@ -39,7 +39,7 @@ class GraphragAgent:
         self.agent_executor = create_react_agent(
             self.llm,
             self.tools,
-            state_modifier=system_prompt
+            prompt=system_prompt
         )
         logger.info("GraphragAgent compiled successfully.")
 
