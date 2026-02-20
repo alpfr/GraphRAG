@@ -19,6 +19,7 @@ from src.rag.ollama_client import OllamaClient
 from src.graphrag.neo4j_client import Neo4jClient
 from src.graphrag.builder import GraphBuilder
 from src.graphrag.visualizer import GraphVisualizer
+from src.agents.graphrag_agent import GraphragAgent
 from config.settings import settings
 
 # Page configuration
@@ -42,6 +43,8 @@ if 'graph_builder' not in st.session_state:
     st.session_state.graph_builder = None
 if 'graph_visualizer' not in st.session_state:
     st.session_state.graph_visualizer = None
+if 'agent' not in st.session_state:
+    st.session_state.agent = None
 if 'initialized' not in st.session_state:
     st.session_state.initialized = False
 
@@ -57,6 +60,7 @@ def initialize_clients():
                 st.session_state.neo4j_client = Neo4jClient()
                 st.session_state.graph_builder = GraphBuilder(st.session_state.neo4j_client)
                 st.session_state.graph_visualizer = GraphVisualizer(st.session_state.neo4j_client)
+                st.session_state.agent = GraphragAgent(st.session_state.opensearch_client, st.session_state.neo4j_client)
                 st.session_state.initialized = True
                 st.success("✅ All clients initialized successfully!")
                 logger.info("All clients initialized")
@@ -203,6 +207,54 @@ def main():
         
         st.divider()
         
+        # LLM Provider Selection
+        st.subheader("🤖 LLM Provider")
+        provider = st.selectbox(
+            "Select Provider",
+            options=["ollama", "openai", "anthropic", "gemini"],
+            index=["ollama", "openai", "anthropic", "gemini"].index(settings.llm_provider)
+        )
+        if provider != settings.llm_provider:
+            settings.llm_provider = provider
+            if st.session_state.initialized:
+                with st.spinner(f"Re-initializing agent with {provider}..."):
+                    st.session_state.agent = GraphragAgent(st.session_state.opensearch_client, st.session_state.neo4j_client)
+                st.success(f"Switched to {provider}!")
+        
+        st.divider()
+        
+        # Display Mode Toggle
+        st.subheader("📱 Display Mode")
+        display_mode = st.radio(
+            "View Mode",
+            options=["Desktop", "Mobile"],
+            horizontal=True
+        )
+        
+        if display_mode == "Mobile":
+            # Inject CSS to simulate a mobile screen width
+            st.markdown("""
+                <style>
+                /* Constrain the main block container to mobile width */
+                .block-container {
+                    max-width: 480px !important;
+                    margin: 0 auto !important;
+                    padding-top: 2rem !important;
+                }
+                /* Hide sidebar completely on mobile simulation if needed, but Streamlit has a built-in collapser */
+                </style>
+            """, unsafe_allow_html=True)
+        else:
+            # Force wide layout for desktop
+            st.markdown("""
+                <style>
+                .block-container {
+                    max-width: 100% !important;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
+        st.divider()
         # System status
         st.subheader("System Status")
         if st.session_state.initialized:
@@ -312,41 +364,30 @@ def main():
                 st.warning("No files to process")
     
     elif selected == "Search":
-        st.title("🔍 Search Documents")
+        st.title("🤖 Agentic GraphRAG Search")
         
         if not st.session_state.initialized:
             st.warning("Please initialize the system first")
             return
         
-        query = st.text_input("Enter your question:")
-        k = st.slider("Number of results", 1, 10, 5)
+        st.markdown(f"**Current LLM Backend:** `{settings.llm_provider}`")
         
-        if query and st.button("Search"):
-            with st.spinner("Searching..."):
-                # Generate query embedding
-                query_embedding = st.session_state.ollama_client.generate_embedding(query)
+        query = st.chat_input("Ask a question about your documents...")
+        
+        if query:
+            st.chat_message("user").write(query)
+            
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = ""
                 
-                # Search
-                results = st.session_state.opensearch_client.search(
-                    query_embedding=query_embedding,
-                    k=k
-                )
-                
-                # Generate RAG response
-                rag_response = st.session_state.ollama_client.generate_rag_response(
-                    query=query,
-                    retrieved_docs=results
-                )
-                
-                # Display answer
-                st.subheader("Answer")
-                st.write(rag_response['answer'])
-                
-                # Display sources
-                st.subheader("Sources")
-                for i, source in enumerate(rag_response['sources'], 1):
-                    with st.expander(f"Source {i}: {source['file_name']} (Score: {source['score']:.4f})"):
-                        st.write(f"Chunk ID: {source['chunk_id']}")
+                with st.spinner("Agent is analyzing request..."):
+                    try:
+                        for chunk in st.session_state.agent.stream_steps(query):
+                            full_response += chunk + "\n\n"
+                            message_placeholder.markdown(full_response)
+                    except Exception as e:
+                        st.error(f"Error during agent execution: {str(e)}")
     
     elif selected == "Graph Explorer":
         st.title("🕸️ Knowledge Graph Explorer")

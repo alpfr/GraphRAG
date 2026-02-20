@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: graphrag-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    # To use a managed certificate, uncomment below and create a ManagedCertificate custom resource
+    # networking.gke.io/managed-certificates: "graphrag-managed-cert"
+    # kubernetes.io/ingress.global-static-ip-name: "graphrag-ip"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: graphrag-frontend-service
+            port:
+              number: 80

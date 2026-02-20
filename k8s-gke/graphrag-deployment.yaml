@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphrag-frontend
+  labels:
+    app: graphrag-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: graphrag-frontend
+  template:
+    metadata:
+      labels:
+        app: graphrag-frontend
+    spec:
+      containers:
+      - name: streamlit
+        image: <REGION>-docker.pkg.dev/<YOUR_GCP_PROJECT_ID>/<REPOSITORY_NAME>/graphrag:latest # Replace before applying!
+        ports:
+        - containerPort: 8501
+        envFrom:
+        - configMapRef:
+            name: graphrag-config
+        env:
+        - name: OPENSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: graphrag-secrets
+              key: OPENSEARCH_PASSWORD
+        - name: NEO4J_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: graphrag-secrets
+              key: NEO4J_PASSWORD
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: graphrag-secrets
+              key: OPENAI_API_KEY
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: graphrag-secrets
+              key: ANTHROPIC_API_KEY
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: graphrag-secrets
+              key: GOOGLE_API_KEY
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graphrag-frontend-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8501
+    protocol: TCP
+  selector:
+    app: graphrag-frontend

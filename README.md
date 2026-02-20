@@ -40,6 +40,56 @@ This project combines four powerful technologies to create a comprehensive, full
     streamlit run app.py
     ```
 
+## AWS EKS Deployment
+
+This project includes fully configured Kubernetes manifests in the `k8s/` directory to deploy the platform to AWS Elastic Kubernetes Service (EKS).
+
+To optimize AWS hosting costs, the EKS configuration is designed to be **CPU-bound** by utilizing Cloud LLMs (OpenAI, Anthropic, Gemini) through our Multi-LLM LangChain factory. This avoids the high hourly costs of provisioning GPU Node Groups (e.g., `g4dn.xlarge`) required to host local Ollama instances on AWS.
+
+### EKS Setup Instructions
+
+1.  **Build and Push the Docker Image**:
+    ```bash
+    # Replace the registry URIs with your AWS account ID and region
+    docker build -t <aws-account-id>.dkr.ecr.<region>.amazonaws.com/graphrag:latest .
+    docker push <aws-account-id>.dkr.ecr.<region>.amazonaws.com/graphrag:latest
+    ```
+2.  **Configure Environment Variables**:
+    Edit the `k8s/secrets.yaml` and input your cloud API keys. **Do not commit these to source control**.
+3.  **Apply Manifests**:
+    Ensure your EKS cluster has the EBS CSI Driver installed to support PersistentVolumeClaims, then apply:
+    ```bash
+    kubectl apply -f k8s/configmap.yaml -f k8s/secrets.yaml
+    kubectl apply -f k8s/opensearch-statefulset.yaml -f k8s/neo4j-statefulset.yaml
+    kubectl apply -f k8s/graphrag-deployment.yaml -f k8s/ingress.yaml
+    ```
+4.  **Access the Application**:
+    Wait for the AWS Application Load Balancer to provision, then navigate to the Ingress address (`kubectl get ingress`).
+
+## GCP GKE Deployment
+
+We also provide native Google Kubernetes Engine (GKE) manifests located in the `k8s-gke/` directory. These manifests are tailored for GCP infrastructure, utilizing `standard-rwo` persistent disks and GCE Ingress Controllers.
+
+### GKE Setup Instructions
+
+1.  **Build and Push to Artifact Registry**:
+    ```bash
+    # Replace the registry URIs with your GCP project details
+    docker build -t <REGION>-docker.pkg.dev/<YOUR_GCP_PROJECT_ID>/<REPOSITORY_NAME>/graphrag:latest .
+    docker push <REGION>-docker.pkg.dev/<YOUR_GCP_PROJECT_ID>/<REPOSITORY_NAME>/graphrag:latest
+    ```
+2.  **Configure Environment Variables**:
+    Edit `k8s-gke/secrets.yaml` and input your cloud API keys. **Do not commit these to source control**.
+3.  **Apply GKE Manifests**:
+    Ensure your GKE cluster has the Compute Engine Persistent Disk CSI Driver enabled, then apply:
+    ```bash
+    kubectl apply -f k8s-gke/configmap.yaml -f k8s-gke/secrets.yaml
+    kubectl apply -f k8s-gke/opensearch-statefulset.yaml -f k8s-gke/neo4j-statefulset.yaml
+    kubectl apply -f k8s-gke/graphrag-deployment.yaml -f k8s-gke/ingress.yaml
+    ```
+4.  **Access the Application**:
+    Wait for the Google Cloud Load Balancer (GCLB) to provision, then navigate to the Ingress IP address (`kubectl get ingress`).
+
 ## Usage Guide
 
 1.  **Initialize System**: Open the Streamlit UI (`http://localhost:8501`) and click **Initialize System** in the sidebar. This connects to OpenSearch, Neo4j, and Ollama, and prepares the necessary indices.

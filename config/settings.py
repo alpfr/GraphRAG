@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     ollama_model: str = "ibm/granite4:latest"
     ollama_embedding_model: str = "granite-embedding:278m"
 
+    # Multi-LLM Routing Settings
+    llm_provider: str = "ollama" # Options: ollama, openai, anthropic, gemini
+    
+    # API Keys for Cloud Providers
+    openai_api_key: str = ""
+    anthropic_api_key: str = ""
+    google_api_key: str = ""
+
     # Configuration for files
     input_dir: str = "input"
     output_dir: str = "output"
