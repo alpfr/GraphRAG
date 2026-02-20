@@ -90,6 +90,31 @@ We also provide native Google Kubernetes Engine (GKE) manifests located in the `
 4.  **Access the Application**:
     Wait for the Google Cloud Load Balancer (GCLB) to provision, then navigate to the Ingress IP address (`kubectl get ingress`).
 
+## Azure AKS Deployment
+
+We also provide native Azure Kubernetes Service (AKS) manifests located in the `k8s-aks/` directory. These manifests are tailored for Azure infrastructure, utilizing `managed-premium` Azure Disks and the Azure Application Gateway Ingress Controller (AGIC).
+
+### AKS Setup Instructions
+
+1.  **Build and Push to Azure Container Registry (ACR)**:
+    ```bash
+    # Replace <YOUR_ACR_NAME> with your Azure Container Registry name
+    docker build -t <YOUR_ACR_NAME>.azurecr.io/graphrag:latest .
+    az acr login --name <YOUR_ACR_NAME>
+    docker push <YOUR_ACR_NAME>.azurecr.io/graphrag:latest
+    ```
+2.  **Configure Environment Variables**:
+    Edit `k8s-aks/secrets.yaml` and input your cloud API keys. **Do not commit these to source control**.
+3.  **Apply AKS Manifests**:
+    Ensure your AKS cluster has the Application Gateway Ingress Controller (AGIC) enabled, then apply:
+    ```bash
+    kubectl apply -f k8s-aks/configmap.yaml -f k8s-aks/secrets.yaml
+    kubectl apply -f k8s-aks/opensearch-statefulset.yaml -f k8s-aks/neo4j-statefulset.yaml
+    kubectl apply -f k8s-aks/graphrag-deployment.yaml -f k8s-aks/ingress.yaml
+    ```
+4.  **Access the Application**:
+    Wait for the Azure Application Gateway to provision the public IP, then manually navigate to the App Gateway address (`kubectl get ingress`).
+
 ## Usage Guide
 
 1.  **Initialize System**: Open the Streamlit UI (`http://localhost:8501`) and click **Initialize System** in the sidebar. This connects to OpenSearch, Neo4j, and Ollama, and prepares the necessary indices.
