@@ -15,8 +15,9 @@ data:
   NEO4J_USER: "neo4j"
   
   # LLM Routing
-  LLM_PROVIDER: "openai" # Switching to Cloud LLMs for EKS cost optimization
+  LLM_PROVIDER: "ollama" # Reverted to strict Ollama execution per user directive
+  OLLAMA_HOST: "http://ollama-service:11434"
   
   # Note: 
   # If LLM_PROVIDER is "ollama", you must provide an OLLAMA_HOST URL here.
-  # Since we are using Cloud LLMs in EKS, Local Ollama settings are omitted.
+  # Now using an in-cluster CPU-bound Ollama container.

@@ -45,7 +45,7 @@ class LLMFactory:
             )
             
         elif provider == "ollama":
-            from langchain_community.chat_models import ChatOllama
+            from langchain_ollama import ChatOllama
             return ChatOllama(
                 base_url=settings.ollama_host,
                 model=settings.ollama_model, 
@@ -54,7 +54,7 @@ class LLMFactory:
             
         else:
             logger.warning(f"Unknown provider '{provider}', falling back to Ollama.")
-            from langchain_community.chat_models import ChatOllama
+            from langchain_ollama import ChatOllama
             return ChatOllama(
                 base_url=settings.ollama_host,
                 model=settings.ollama_model, 
@@ -77,12 +77,14 @@ class LLMFactory:
             
         elif provider == "anthropic":
             # Anthropic does not have a native embedding offering in LangChain,
-            # falling back to Ollama or requiring Voyage/OpenAI. We will use Ollama as fallback here.
-            logger.warning("Anthropic selected but no native embeddings exist. Falling back to Ollama embeddings.")
-            from langchain_community.embeddings import OllamaEmbeddings
-            return OllamaEmbeddings(
-                base_url=settings.ollama_host,
-                model=settings.ollama_embedding_model
+            # falling back to OpenAI instead of localhost Ollama.
+            logger.warning("Anthropic selected but no native embeddings exist. Falling back to OpenAI embeddings.")
+            from langchain_openai import OpenAIEmbeddings
+            if not settings.openai_api_key:
+                raise ValueError("OPENAI_API_KEY is not set. Anthropic requires OpenAI API Key for embeddings fallback.")
+            return OpenAIEmbeddings(
+                model="text-embedding-3-small", 
+                api_key=settings.openai_api_key
             )
             
         elif provider == "gemini":
@@ -95,7 +97,7 @@ class LLMFactory:
             )
             
         elif provider == "ollama":
-            from langchain_community.embeddings import OllamaEmbeddings
+            from langchain_ollama import OllamaEmbeddings
             return OllamaEmbeddings(
                 base_url=settings.ollama_host,
                 model=settings.ollama_embedding_model
@@ -103,7 +105,7 @@ class LLMFactory:
             
         else:
             logger.warning(f"Unknown provider '{provider}', falling back to Ollama.")
-            from langchain_community.embeddings import OllamaEmbeddings
+            from langchain_ollama import OllamaEmbeddings
             return OllamaEmbeddings(
                 base_url=settings.ollama_host,
                 model=settings.ollama_embedding_model

@@ -2,7 +2,8 @@ import logging
 from typing import Dict, Any, List
 import json
 from src.graphrag.neo4j_client import Neo4jClient
-from src.rag.ollama_client import OllamaClient
+from src.llm.factory import LLMFactory
+from langchain_core.messages import HumanMessage
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ class GraphBuilder:
     
     def __init__(self, neo4j_client: Neo4jClient):
         self.neo4j = neo4j_client
-        self.llm = OllamaClient()
+        self.llm = LLMFactory.get_chat_model()
 
     def _extract_entities(self, text: str) -> List[Dict[str, str]]:
         """Uses the LLM to extract structured entities from raw text."""
@@ -24,24 +25,17 @@ class GraphBuilder:
         )
 
         try:
-            # We bypass semantic search here and just execute a generation task
-            import requests
-            url = f"{self.llm.host}/api/generate"
-            payload = {
-                "model": self.llm.model,
-                "prompt": prompt,
-                "stream": False,
-                "format": "json",
-                "temperature": 0.1
-            }
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            content = response.content.strip()
             
-            response = requests.post(url, json=payload, timeout=60)
-            response.raise_for_status()
-            data = response.json()
-            
-            entities = json.loads(data["response"])
+            # remove ```json if it wrapped it
+            if content.startswith("```json"):
+                content = content[7:-3].strip()
+            elif content.startswith("```"):
+                content = content[3:-3].strip()
+                
+            entities = json.loads(content)
             if isinstance(entities, dict):
-                 # Handle cases where the LLM returned an object instead of array
                  entities = [entities] 
                  
             return entities

@@ -6,10 +6,10 @@ An advanced next-generation Retrieval-Augmented Generation (RAG) platform integr
 
 This project combines four powerful technologies to create a comprehensive, fully local RAG pipeline:
 
-1.  **Docling**: For intelligent document parsing. It handles complex formats like PDFs, DOCXs, and PPTXs, extracting hierarchical structures and rich text chunks.
+1.  **Docling**: For intelligent document parsing. It handles complex formats like PDFs, HTML, MD, and all modern/legacy Microsoft Office formats (DOCX/DOC, PPTX/PPT, XLSX/XLS), extracting hierarchical structures and rich text chunks.
 2.  **OpenSearch**: The primary vector database. It stores the document chunks and their high-dimensional embeddings (768-D), enabling ultra-fast, sub-millisecond semantic similarity search using the `hnsw` algorithm.
-3.  **Neo4j**: The knowledge graph database. It maps the structural relationships between documents, chunks, and extracted semantic entities, allowing for multi-hop reasoning and visual relationship exploration.
-4.  **Ollama**: The local LLM engine. It provides the embedding model (`granite-embedding:278m`) for vectorizing text and the generative model (`ibm/granite4:latest`) for synthesizing answers based on retrieved context.
+3.  **Neo4j**: The knowledge graph database. It maps the structural relationships between documents, chunks, and extracted semantic entities, allowing for multi-hop reasoning and visual relationship exploration using a native CDN-backed `PyVis` Network edge renderer.
+4.  **Ollama**: The local and cloud-native LLM engine. Rebuilt with a natively integrated LangGraph autonomous agent via the `langchain-ollama` SDK. It provides the embedding model (`granite-embedding:278m`) for vectorizing text and the generative model (`ibm/granite4:latest`) for routing tools and synthesizing answers based on retrieved context.
 
 ## Prerequisites
 
@@ -44,7 +44,7 @@ This project combines four powerful technologies to create a comprehensive, full
 
 This project includes fully configured Kubernetes manifests in the `k8s/` directory to deploy the platform to AWS Elastic Kubernetes Service (EKS).
 
-To optimize AWS hosting costs, the EKS configuration is designed to be **CPU-bound** by utilizing Cloud LLMs (OpenAI, Anthropic, Gemini) through our Multi-LLM LangChain factory. This avoids the high hourly costs of provisioning GPU Node Groups (e.g., `g4dn.xlarge`) required to host local Ollama instances on AWS.
+To optimize AWS hosting costs, the EKS configuration incorporates an in-cluster **CPU-bound** Ollama Deployment using an automated `postStart` lifecycle hook to securely pull Granite models natively inside the VPC. The Streamlit frontend is powered by an automated multi-arch compiled AMD64 Docker container pushed to Amazon ECR to avoid `exec format error` on standard EC2 worker nodes.
 
 ### EKS Setup Instructions
 

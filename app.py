@@ -20,6 +20,7 @@ from src.graphrag.neo4j_client import Neo4jClient
 from src.graphrag.builder import GraphBuilder
 from src.graphrag.visualizer import GraphVisualizer
 from src.agents.graphrag_agent import GraphragAgent
+from src.llm.factory import LLMFactory
 from config.settings import settings
 
 # Page configuration
@@ -35,8 +36,6 @@ if 'processor' not in st.session_state:
     st.session_state.processor = None
 if 'opensearch_client' not in st.session_state:
     st.session_state.opensearch_client = None
-if 'ollama_client' not in st.session_state:
-    st.session_state.ollama_client = None
 if 'neo4j_client' not in st.session_state:
     st.session_state.neo4j_client = None
 if 'graph_builder' not in st.session_state:
@@ -45,10 +44,13 @@ if 'graph_visualizer' not in st.session_state:
     st.session_state.graph_visualizer = None
 if 'agent' not in st.session_state:
     st.session_state.agent = None
+if 'embedding_model' not in st.session_state:
+    st.session_state.embedding_model = None
 if 'initialized' not in st.session_state:
     st.session_state.initialized = False
 
 
+import traceback
 def initialize_clients():
     """Initialize all clients."""
     try:
@@ -56,8 +58,8 @@ def initialize_clients():
             if not st.session_state.initialized:
                 st.session_state.processor = DoclingProcessor()
                 st.session_state.opensearch_client = OpenSearchClient()
-                st.session_state.ollama_client = OllamaClient()
                 st.session_state.neo4j_client = Neo4jClient()
+                st.session_state.embedding_model = LLMFactory.get_embeddings(settings.llm_provider)
                 st.session_state.graph_builder = GraphBuilder(st.session_state.neo4j_client)
                 st.session_state.graph_visualizer = GraphVisualizer(st.session_state.neo4j_client)
                 st.session_state.agent = GraphragAgent(st.session_state.opensearch_client, st.session_state.neo4j_client)
@@ -65,8 +67,13 @@ def initialize_clients():
                 st.success("✅ All clients initialized successfully!")
                 logger.info("All clients initialized")
     except Exception as e:
-        st.error(f"❌ Error initializing clients: {str(e)}")
-        logger.error(f"Initialization error: {str(e)}")
+        error_msg = repr(e)
+        logger.error(f"Initialization error structure: {traceback.format_exc()}")
+        if "Connection refused" in error_msg and settings.llm_provider == "ollama":
+            st.error("❌ Error initializing clients: Cannot connect to local Ollama daemon (localhost:11434). Please select a Cloud provider (OpenAI/Anthropic/Gemini) since this is a cloud deployment.")
+        else:
+            st.error(f"❌ Error initializing clients: {error_msg}")
+
 
 
 def process_single_file(uploaded_file):
@@ -84,7 +91,7 @@ def process_single_file(uploaded_file):
             
             # Generate embeddings
             texts = [chunk['text'] for chunk in doc_data['chunks']]
-            embeddings = st.session_state.ollama_client.generate_embeddings_batch(texts)
+            embeddings = st.session_state.embedding_model.embed_documents(texts)
             
             # Index in OpenSearch
             document_id = f"{Path(uploaded_file.name).stem}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
@@ -145,7 +152,7 @@ def process_batch_files():
             
             # Generate embeddings
             texts = [chunk['text'] for chunk in doc_data['chunks']]
-            embeddings = st.session_state.ollama_client.generate_embeddings_batch(texts)
+            embeddings = st.session_state.embedding_model.embed_documents(texts)
             
             # Index in OpenSearch
             document_id = f"{file_path.stem}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
@@ -207,20 +214,7 @@ def main():
         
         st.divider()
         
-        # LLM Provider Selection
-        st.subheader("🤖 LLM Provider")
-        provider = st.selectbox(
-            "Select Provider",
-            options=["ollama", "openai", "anthropic", "gemini"],
-            index=["ollama", "openai", "anthropic", "gemini"].index(settings.llm_provider)
-        )
-        if provider != settings.llm_provider:
-            settings.llm_provider = provider
-            if st.session_state.initialized:
-                with st.spinner(f"Re-initializing agent with {provider}..."):
-                    st.session_state.agent = GraphragAgent(st.session_state.opensearch_client, st.session_state.neo4j_client)
-                st.success(f"Switched to {provider}!")
-        
+
         st.divider()
         
         # Display Mode Toggle
@@ -307,7 +301,7 @@ def main():
         
         uploaded_file = st.file_uploader(
             "Choose a document",
-            type=['pdf', 'docx', 'pptx', 'txt', 'md', 'html']
+            type=['pdf', 'docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'txt', 'md', 'html']
         )
         
         if uploaded_file:

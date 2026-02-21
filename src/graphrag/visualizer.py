@@ -13,7 +13,7 @@ class GraphVisualizer:
 
     def _create_base_network(self) -> Network:
         """Initializes a PyVis network with standard physics configuration."""
-        net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="#333333", directed=True)
+        net = Network(height="600px", width="100%", bgcolor="#ffffff", font_color="#333333", directed=True, notebook=True, cdn_resources='remote')
         net.force_atlas_2based()
         return net
 

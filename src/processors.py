@@ -37,7 +37,7 @@ class DoclingProcessor:
         logger.info(f"Processing document: {path.name}")
         
         # Determine fallback parsing vs docling
-        if DOCLING_AVAILABLE and path.suffix.lower() in ['.pdf', '.docx', '.pptx', '.html', '.md']:
+        if DOCLING_AVAILABLE and path.suffix.lower() in ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.xlsx', '.xls', '.html', '.md']:
             doc_result = self.converter.convert(str(path))
             document = doc_result.document
             
