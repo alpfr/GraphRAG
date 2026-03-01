@@ -25,7 +25,7 @@ from config.settings import settings
 
 # Page configuration
 st.set_page_config(
-    page_title="OpenSearch-Docling-GraphRAG",
+    page_title="OPSSIGHT OpenSearch",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -271,7 +271,7 @@ def main():
     
     # Main content
     if selected == "Home":
-        st.title("🏠 Welcome to OpenSearch-Docling-GraphRAG")
+        st.title("🏠 Welcome to OPSSIGHT OpenSearch")
         st.markdown("""
         ### A Comprehensive Document Processing and RAG System
         
