@@ -7,8 +7,9 @@ logger = logging.getLogger(__name__)
 
 class OpenSearchClient:
     """Client for interacting with OpenSearch vector database."""
-    
-    def __init__(self):
+
+    def __init__(self, embedding_dimension: int = 768):
+        self.embedding_dimension = embedding_dimension
         self.client = OpenSearch(
             hosts=[{'host': settings.opensearch_host, 'port': settings.opensearch_port, 'scheme': 'https'}],
             http_auth=(settings.opensearch_user, settings.opensearch_password),
@@ -19,7 +20,7 @@ class OpenSearchClient:
         )
         self.index_name = settings.opensearch_index_name
         self._ensure_index_exists()
-        logger.info("OpenSearch client initialized")
+        logger.info(f"OpenSearch client initialized (dimension={self.embedding_dimension})")
 
     def _ensure_index_exists(self):
         """Creates the index with k-NN vector settings if it doesn't exist."""
@@ -40,7 +41,7 @@ class OpenSearchClient:
                         "text": {"type": "text"},
                         "embedding": {
                             "type": "knn_vector",
-                            "dimension": 768, # Ensure this matches Granite Embeddings Output Dimension
+                            "dimension": self.embedding_dimension,  # Dynamic: matches selected embedding model
                             "method": {
                                 "name": "hnsw",
                                 "space_type": "l2",
@@ -123,3 +124,21 @@ class OpenSearchClient:
         """Counts the total amount of indexed chunks."""
         self.client.indices.refresh(index=self.index_name)
         return self.client.count(index=self.index_name)["count"]
+
+    def get_index_dimension(self) -> Optional[int]:
+        """Get the embedding dimension of the current index."""
+        try:
+            if self.client.indices.exists(index=self.index_name):
+                mapping = self.client.indices.get_mapping(index=self.index_name)
+                props = mapping[self.index_name]["mappings"]["properties"]
+                return props.get("embedding", {}).get("dimension")
+        except Exception as e:
+            logger.warning(f"Could not read index dimension: {e}")
+        return None
+
+    def is_dimension_compatible(self, new_dimension: int) -> bool:
+        """Check if a new embedding dimension is compatible with the existing index."""
+        current = self.get_index_dimension()
+        if current is None:
+            return True  # No index exists yet
+        return current == new_dimension
