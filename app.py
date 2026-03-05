@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_option_menu import option_menu
+# Using native Streamlit navigation (no external component needed)
 import os
 from pathlib import Path
 from datetime import datetime
@@ -423,12 +423,20 @@ def main():
     with st.sidebar:
         st.title("📚 OPSSIGHT OpenSearch")
 
-        selected = option_menu(
-            menu_title=None,
-            options=["Home", "Upload", "Batch Process", "Search", "Graph Explorer", "Settings"],
-            icons=["house", "cloud-upload", "files", "search", "diagram-3", "gear"],
-            default_index=0,
+        menu_options = {
+            "🏠 Home": "Home",
+            "📤 Upload": "Upload",
+            "📁 Batch Process": "Batch Process",
+            "🔍 Search": "Search",
+            "🕸️ Graph Explorer": "Graph Explorer",
+            "⚙️ Settings": "Settings",
+        }
+        selected_label = st.radio(
+            "Navigation",
+            list(menu_options.keys()),
+            label_visibility="collapsed",
         )
+        selected = menu_options[selected_label]
 
         st.divider()
 
