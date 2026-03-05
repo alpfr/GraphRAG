@@ -14,6 +14,12 @@ def set_clients(opensearch_client, neo4j_client, embedding_model):
     _neo4j_client = neo4j_client
     _embedding_model = embedding_model
 
+
+def update_embedding_model(embedding_model):
+    """Swap the embedding model without re-initializing DB clients."""
+    global _embedding_model
+    _embedding_model = embedding_model
+
 @tool
 def vector_search(query: str, k: int = 5) -> str:
     """
